@@ -1,0 +1,50 @@
+from urllib.request import urlopen, Request
+from bs4 import BeautifulSoup
+import re
+url = 'http://www.zhrczp.com/jobs/jobs_list/trade/9.html'
+header = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.36'}
+htmlAfter = Request(url, headers=header)
+html = urlopen(htmlAfter)
+bs = BeautifulSoup(html, 'html.parser')
+findtd4=re.compile(r'<div.*class="td4">(.*?)<')
+findtitle=re.compile(r'<a.*title="(.*?)">')
+ti=[]
+td=[]
+
+for item in bs.find_all("div",class_="J_jobsList yli"):
+    data=[]
+    item=str(item)
+
+    title=re.findall(findtitle,item)[0]
+    ti.append(title)
+
+    td4=re.findall(findtd4,item)[0]
+    td.append(td4)
+    print((ti,td))
+    print(title,td4)
+#    Job_title=title
+#   wage=td4
+
+import pymysql
+conn=pymysql.connect(host='localhost',user='root',password='123456',port=3306,database='mysql')
+cursor=conn.cursor()
+try:
+    #创建表格设置字段属性
+    cursor.execute('CREATE TABLE zpp (Job_title VARCHAR(20) NOT NULL,wage VARCHAR(20) NOT NULL)')
+    print('成功建表')
+except:
+    print('此表名已存在')
+    conn.rollback() # 失败则回滚数据
+for i in range(len(ti)):
+    sql = '''insert into  zpp (Job_title,wage) values ('%s','%s')''' %(ti[i],td[i])
+
+    print('插入' + str(i + 1) + '行')  # ''' ''' 一定要使用，不然会出现解析失败
+    try:
+        cursor.execute(sql)
+        conn.commit()
+    except:
+        conn.rollback()
+        print('写入失败')
+
+cursor.close()
+conn.close()
